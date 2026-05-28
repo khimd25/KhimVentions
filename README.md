@@ -16,7 +16,11 @@ no monthly bill, nothing to break. Your data lives on your device.
 - **Important things look important.** Health (meds/vitamins) is colour-coded
   apart from "tidy one thing."
 - **Brain dump button.** The big `＋` top-right captures a racing thought instantly
-  so it stops bouncing around your head. Sort it later.
+  so it stops bouncing around your head. Sort it later. **Tap the mic and just talk** —
+  voice is transcribed live, and each pause becomes its own to-do, so saying
+  "call the dentist… pick up cat food… text Sam" lands as three separate items.
+  (Voice uses the browser's built-in speech recognition; works on Chrome/Safari,
+  falls back to typing where unsupported. Needs HTTPS + mic permission.)
 
 ## How to use it
 

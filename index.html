@@ -219,8 +219,15 @@
   <div class="modal-backdrop" id="dumpModal" hidden>
     <div class="modal">
       <h3>Brain dump 🧠</h3>
-      <p class="modal-sub">Get it out of your head. Sort it later.</p>
-      <textarea id="dumpText" rows="3" placeholder="What's on your mind?"></textarea>
+      <p class="modal-sub">Get it out of your head. Talk or type — sort it later.</p>
+      <div class="mic-row">
+        <button class="mic-btn" id="micBtn" type="button" aria-label="Hold a thought — tap to talk">
+          <span class="mic-ico">🎤</span>
+        </button>
+        <span class="mic-status" id="micStatus">Tap the mic and just talk</span>
+      </div>
+      <textarea id="dumpText" rows="4" placeholder="What's on your mind?"></textarea>
+      <p class="hint">Each pause becomes its own to-do. Edit anything before you capture.</p>
       <div class="modal-actions">
         <span class="spacer"></span>
         <button class="text-btn" id="dumpCancelBtn">Cancel</button>

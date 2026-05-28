@@ -456,19 +456,84 @@ function deletePerson() {
 }
 
 /* ============================================================
-   BRAIN DUMP — fast capture, lands as a to-do
+   BRAIN DUMP — fast capture by voice or type, lands as to-dos
    ============================================================ */
-function openDump() { $('#dumpText').value = ''; $('#dumpModal').hidden = false; setTimeout(() => $('#dumpText').focus(), 50); }
-function closeDump() { $('#dumpModal').hidden = true; }
+let recog = null, recording = false, dumpBase = '';
+
+function initSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return; // unsupported (e.g. Firefox) — graceful fallback to typing
+  recog = new SR();
+  recog.continuous = true;
+  recog.interimResults = true;
+  recog.lang = navigator.language || 'en-US';
+
+  recog.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const txt = e.results[i][0].transcript.trim();
+      if (e.results[i].isFinal) { if (txt) dumpBase += txt + '\n'; } // pause => new line => new to-do
+      else interim += txt;
+    }
+    $('#dumpText').value = dumpBase + interim;
+    $('#dumpText').scrollTop = $('#dumpText').scrollHeight;
+  };
+  recog.onerror = (e) => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      setMic(false);
+      $('#micStatus').textContent = 'Mic blocked — allow microphone access in your browser settings.';
+    } else if (e.error === 'no-speech' || e.error === 'aborted') {
+      /* ignore — onend will handle restart while still recording */
+    } else {
+      setMic(false);
+    }
+  };
+  recog.onend = () => {
+    // browsers stop after silence even in continuous mode; keep going if user is still recording
+    if (recording) { try { recog.start(); } catch { setMic(false); } }
+  };
+}
+
+function setMic(on) {
+  recording = on;
+  const btn = $('#micBtn'), status = $('#micStatus');
+  btn.classList.toggle('recording', on);
+  status.classList.toggle('live', on);
+  status.textContent = on ? '● Listening… talk freely. Pause = new item.' : 'Tap the mic and just talk';
+}
+function toggleVoice() {
+  if (!recog) { toast('Voice input isn’t supported in this browser — type instead.'); return; }
+  if (recording) { setMic(false); try { recog.stop(); } catch {} return; }
+  // start fresh from whatever is already in the box
+  dumpBase = $('#dumpText').value;
+  if (dumpBase && !dumpBase.endsWith('\n')) dumpBase += '\n';
+  setMic(true);
+  try { recog.start(); } catch { /* already started */ }
+}
+function stopVoice() { if (recording) { setMic(false); try { recog.stop(); } catch {} } }
+
+function openDump() {
+  $('#dumpText').value = '';
+  dumpBase = '';
+  setMic(false);
+  const supported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  $('#micBtn').disabled = !supported;
+  if (!supported) $('#micStatus').textContent = 'Voice not supported here — just type below.';
+  $('#dumpModal').hidden = false;
+}
+function closeDump() { stopVoice(); $('#dumpModal').hidden = true; }
 function saveDump() {
+  stopVoice();
   const text = $('#dumpText').value.trim();
   if (!text) { closeDump(); return; }
-  // split on newlines so a list dumps as multiple to-dos
+  // split on newlines so a list (typed or spoken) dumps as multiple to-dos
+  let n = 0;
   text.split('\n').map(s => s.trim()).filter(Boolean).forEach(line => {
     tasks.unshift({ id: uid(), title: line, type: 'errand', done: false, createdAt: Date.now() });
+    n++;
   });
   saveTasks(); closeDump(); renderLists(); renderToday();
-  toast('Out of your head, into the list. 🧠➡️📋');
+  toast(`Out of your head — ${n} ${n === 1 ? 'thing' : 'things'} captured. 🧠➡️📋`);
 }
 
 /* ============================================================
@@ -664,8 +729,10 @@ function init() {
   $('#errandAddBtn').addEventListener('click', addErrand);
   $('#errandInput').addEventListener('keydown', e => { if (e.key === 'Enter') addErrand(); });
 
-  // brain dump
+  // brain dump (voice + type)
+  initSpeech();
   $('#brainDumpBtn').addEventListener('click', openDump);
+  $('#micBtn').addEventListener('click', toggleVoice);
   $('#dumpCancelBtn').addEventListener('click', closeDump);
   $('#dumpSaveBtn').addEventListener('click', saveDump);
   $('#dumpModal').addEventListener('click', e => { if (e.target.id === 'dumpModal') closeDump(); });

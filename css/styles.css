@@ -226,6 +226,28 @@ body {
 }
 .field input:focus, .field select:focus, .modal textarea:focus { outline: none; border-color: var(--accent); }
 .modal textarea { resize: vertical; }
+
+/* ===== Voice mic ===== */
+.mic-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.mic-btn {
+  width: 60px; height: 60px; flex: 0 0 60px; border-radius: 50%;
+  border: none; cursor: pointer; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 18px rgba(124,156,255,0.35); transition: transform 0.1s;
+}
+.mic-btn:active { transform: scale(0.92); }
+.mic-btn .mic-ico { font-size: 28px; }
+.mic-btn.recording {
+  background: linear-gradient(135deg, var(--danger), #ff8e8e);
+  animation: micpulse 1.2s ease-in-out infinite;
+}
+@keyframes micpulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248,113,113,0.55); }
+  50% { box-shadow: 0 0 0 16px rgba(248,113,113,0); }
+}
+.mic-btn:disabled { background: var(--card); opacity: 0.5; box-shadow: none; cursor: not-allowed; }
+.mic-status { font-size: 14px; color: var(--text-dim); flex: 1; }
+.mic-status.live { color: var(--danger); font-weight: 600; }
 .modal-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .modal-actions .spacer { flex: 1; }
 
