@@ -1,0 +1,76 @@
+# KhimVentions 🧠✨
+
+An ADHD-friendly tracker built for one person: you. Meds, vitamins, workouts,
+chores, cat bonding, meal prep, errands, side projects — the *everything*.
+
+It's a **phone-first web app** you add to your home screen. No login, no backend,
+no monthly bill, nothing to break. Your data lives on your device.
+
+## Why it's built this way (the ADHD design rules)
+
+- **One tap to log.** No forms. Tap a card → done → little dopamine burst. 🎉
+- **No guilt.** A missed day fades quietly. Streaks forgive "today not done yet"
+  so you don't lose a 12-day streak just because it's 2pm. Get back on, no shame.
+- **Lives where your eyes are.** Home-screen icon + reminder notifications so you
+  don't have to *remember to remember*.
+- **Important things look important.** Health (meds/vitamins) is colour-coded
+  apart from "tidy one thing."
+- **Brain dump button.** The big `＋` top-right captures a racing thought instantly
+  so it stops bouncing around your head. Sort it later.
+
+## How to use it
+
+- **Today tab** — your daily + weekly habits and what's on your plate. Tap to complete.
+- **Lists tab** — to-dos and side projects. Quick-add at the top.
+- **Me tab** — streaks, a 2-week heatmap, edit your habits, turn on reminders,
+  and back up your data.
+
+It comes pre-loaded with your list (meds, vitamins, workout, cat bonding, tidy,
+meal prep, "message people back"). Edit or delete anything on the **Me** tab.
+
+## Get it on your phone
+
+You need to host the files somewhere with HTTPS (required for "add to home screen"
+and notifications). Easiest free option is **GitHub Pages**:
+
+1. Push this repo to GitHub (already on branch `claude/clever-gates-AWDls`).
+2. Repo **Settings → Pages → Source: deploy from branch** → pick the branch, `/root`.
+3. Open the published URL on your phone.
+4. **iPhone (Safari):** Share → *Add to Home Screen*.
+   **Android (Chrome):** menu → *Install app* / *Add to Home Screen*.
+5. Open it from the home-screen icon, go to **Me → Turn on reminders**, allow notifications.
+
+### Try it locally first
+
+```bash
+python3 -m http.server 8000
+# then open http://localhost:8000 in your browser
+```
+
+## A note on reminders
+
+Reminders fire reliably while the app is open, and on Android Chrome (installed)
+they can fire in the background via scheduled notifications. iOS is stricter about
+background notifications for web apps — for now the most reliable nudge there is
+having the icon on your home screen and a reminder time set. If you want
+bulletproof push later (fires even when fully closed), that's the one feature
+that needs a tiny backend — easy to add as v2.
+
+## Back up your data
+
+Data is stored in your browser's `localStorage`. On the **Me** tab, **Export backup**
+downloads a JSON file. **Import backup** restores it (e.g. on a new phone). Do this
+now and then so a lost device never costs you your streaks.
+
+## Files
+
+```
+index.html              app shell + views
+css/styles.css          styling (dark, calm, big tap targets)
+js/app.js               all the logic
+manifest.webmanifest    PWA manifest
+sw.js                   service worker (offline + reminder clicks)
+icons/                  app icons (+ gen-icons.js to regenerate)
+```
+
+Regenerate icons after editing `icons/icon.svg`'s look: `node icons/gen-icons.js`.
