@@ -536,6 +536,30 @@ function saveDump() {
   toast(`Out of your head — ${n} ${n === 1 ? 'thing' : 'things'} captured. 🧠➡️📋`);
 }
 
+/* Shared in from another app (Web Share Target). The manifest routes the OS
+   share sheet here with ?shared_title/&shared_text/&shared_url, which we
+   pre-fill into the brain dump so you can tweak before capturing. */
+function handleShareTarget() {
+  const p = new URLSearchParams(location.search);
+  const title = (p.get('shared_title') || '').trim();
+  const text = (p.get('shared_text') || '').trim();
+  const url = (p.get('shared_url') || '').trim();
+  if (!title && !text && !url) return;
+  // strip params so a refresh doesn't re-capture the same thing
+  history.replaceState({}, '', location.pathname);
+
+  const parts = [];
+  if (text) parts.push(text);
+  if (title && title !== text) parts.push(title);
+  let body = parts.join(' — ').trim();
+  if (url && !body.includes(url)) body = body ? `${body} ${url}` : url; // keep on one line = one to-do
+
+  openDump();
+  $('#dumpText').value = body;
+  dumpBase = body;
+  toast('Shared in — tweak it and capture. 📥');
+}
+
 /* ============================================================
    NOTIFICATIONS / REMINDERS
    ============================================================ */
@@ -757,6 +781,9 @@ function init() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+
+  // if launched from another app's share sheet, capture what came in
+  handleShareTarget();
 }
 
 document.addEventListener('DOMContentLoaded', init);

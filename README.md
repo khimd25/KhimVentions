@@ -13,6 +13,10 @@ no monthly bill, nothing to break. Your data lives on your device.
   so you don't lose a 12-day streak just because it's 2pm. Get back on, no shame.
 - **Lives where your eyes are.** Home-screen icon + reminder notifications so you
   don't have to *remember to remember*.
+- **Capture from anywhere.** Once installed, KhimVentions shows up in your phone's
+  **share sheet** — share a link, article, address, or selected text from any app
+  and it lands here as a to-do (pre-filled in the brain dump so you can tweak it
+  first). No copy-paste, no app-switching.
 - **Important things look important.** Health (meds/vitamins) is colour-coded
   apart from "tidy one thing."
 - **Brain dump button.** The big `＋` top-right captures a racing thought instantly
