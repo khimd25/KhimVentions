@@ -54,6 +54,11 @@
         <div class="card-list" id="weeklyList"></div>
       </div>
 
+      <div class="section-block" id="replyBlock" hidden>
+        <h2 class="block-title">Reply to <span class="count-pill" id="replyCount"></span></h2>
+        <div class="card-list" id="replyList"></div>
+      </div>
+
       <div class="section-block" id="todayErrandsBlock">
         <h2 class="block-title">On your plate</h2>
         <div class="card-list" id="todayErrandsList"></div>
@@ -69,9 +74,14 @@
       <div class="seg-toggle">
         <button class="seg active" data-list="errands">To-dos</button>
         <button class="seg" data-list="projects">Projects</button>
+        <button class="seg" data-list="people">People</button>
       </div>
       <div class="card-list" id="errandsList"></div>
       <div class="card-list" id="projectsList" hidden></div>
+      <div id="peoplePane" hidden>
+        <button class="wide-btn ghost" id="addPersonBtn">+ Add a person</button>
+        <div class="card-list" id="peopleList"></div>
+      </div>
     </section>
 
     <!-- ME (stats + manage + settings) -->
@@ -161,6 +171,46 @@
         <span class="spacer"></span>
         <button class="text-btn" id="habitCancelBtn">Cancel</button>
         <button class="btn-primary" id="habitSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Person editor modal ===== -->
+  <div class="modal-backdrop" id="personModal" hidden>
+    <div class="modal">
+      <h3 id="personModalTitle">Add a person</h3>
+      <p class="modal-sub">One tap will open the chat already addressed — no digging.</p>
+      <label class="field">
+        <span>Name</span>
+        <input type="text" id="personName" placeholder="e.g. Mom" />
+      </label>
+      <label class="field">
+        <span>Emoji (optional)</span>
+        <input type="text" id="personEmoji" maxlength="2" placeholder="💜" />
+      </label>
+      <label class="field">
+        <span>How to reach them</span>
+        <select id="personChannel">
+          <option value="sms">Text (SMS / iMessage)</option>
+          <option value="call">Call</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="email">Email</option>
+          <option value="telegram">Telegram</option>
+        </select>
+      </label>
+      <label class="field">
+        <span id="personHandleLabel">Phone number</span>
+        <input type="text" id="personHandle" placeholder="+1 555 123 4567" />
+      </label>
+      <label class="field">
+        <span>Note (optional)</span>
+        <input type="text" id="personNote" placeholder="e.g. owe her a reply about the weekend" />
+      </label>
+      <div class="modal-actions">
+        <button class="text-btn danger" id="personDeleteBtn" hidden>Delete</button>
+        <span class="spacer"></span>
+        <button class="text-btn" id="personCancelBtn">Cancel</button>
+        <button class="btn-primary" id="personSaveBtn">Save</button>
       </div>
     </div>
   </div>

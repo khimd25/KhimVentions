@@ -21,7 +21,13 @@ no monthly bill, nothing to break. Your data lives on your device.
 ## How to use it
 
 - **Today tab** — your daily + weekly habits and what's on your plate. Tap to complete.
-- **Lists tab** — to-dos and side projects. Quick-add at the top.
+- **Lists tab** — to-dos, side projects, and **People**.
+  - The **People** list is the reply launcher: add someone once (name + how to reach
+    them), and tapping their button opens the text / WhatsApp / email / call **already
+    addressed** — no app-switching, no digging. The whole point is to delete the
+    activation energy that makes "message people back" so hard.
+  - People marked *needs a reply* surface in a **Reply to** block on the Today screen.
+    Tapping to reach out clears it automatically and remembers when you last did.
 - **Me tab** — streaks, a 2-week heatmap, edit your habits, turn on reminders,
   and back up your data.
 

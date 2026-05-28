@@ -42,7 +42,7 @@ const DEFAULT_TASKS = [
 ];
 
 /* ---------- state ---------- */
-let habits, tasks, logs, meta;
+let habits, tasks, logs, meta, people;
 
 function load() {
   if (!KV.get('seeded')) {
@@ -50,17 +50,62 @@ function load() {
     KV.set('tasks', DEFAULT_TASKS);
     KV.set('logs', {});
     KV.set('meta', { notifsEnabled: false });
+    KV.set('people', []);
     KV.set('seeded', true);
   }
   habits = KV.get('habits', []);
   tasks = KV.get('tasks', []);
   logs = KV.get('logs', {});
   meta = KV.get('meta', { notifsEnabled: false });
+  people = KV.get('people', []); // added after v1, so default safely for existing users
 }
 const saveHabits = () => KV.set('habits', habits);
 const saveTasks = () => KV.set('tasks', tasks);
 const saveLogs = () => KV.set('logs', logs);
 const saveMeta = () => KV.set('meta', meta);
+const savePeople = () => KV.set('people', people);
+
+/* ---------- people / reply launcher ---------- */
+const CHANNELS = {
+  sms:      { label: 'Text',     icon: '💬', handleLabel: 'Phone number',     ph: '+1 555 123 4567' },
+  call:     { label: 'Call',     icon: '📞', handleLabel: 'Phone number',     ph: '+1 555 123 4567' },
+  whatsapp: { label: 'WhatsApp', icon: '🟢', handleLabel: 'Phone (with country code)', ph: '+1 555 123 4567' },
+  email:    { label: 'Email',    icon: '✉️', handleLabel: 'Email address',    ph: 'name@email.com' },
+  telegram: { label: 'Telegram', icon: '✈️', handleLabel: 'Username',         ph: '@username' },
+};
+function contactLink(p) {
+  const h = (p.handle || '').trim();
+  const digits = h.replace(/[^0-9+]/g, '');
+  switch (p.channel) {
+    case 'sms':      return 'sms:' + digits;
+    case 'call':     return 'tel:' + digits;
+    case 'whatsapp': return 'https://wa.me/' + digits.replace(/[^0-9]/g, '');
+    case 'email':    return 'mailto:' + h;
+    case 'telegram': return 'https://t.me/' + h.replace(/^@/, '');
+    default:         return '#';
+  }
+}
+function relTime(ts) {
+  if (!ts) return 'never reached out';
+  const days = Math.floor((Date.now() - ts) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7) return days + ' days ago';
+  if (days < 14) return 'last week';
+  return Math.floor(days / 7) + ' weeks ago';
+}
+function openContact(p) {
+  const link = contactLink(p);
+  // mark as handled the moment you reach out — that's the win
+  p.owe = false;
+  p.lastContacted = Date.now();
+  savePeople();
+  // sms/tel/mailto navigate in place; web links open a new tab
+  if (/^https?:/.test(link)) window.open(link, '_blank');
+  else window.location.href = link;
+  renderPeople(); renderToday();
+  toast(`Opening ${CHANNELS[p.channel].label.toLowerCase()} to ${p.name} ✨`);
+}
 
 /* ---------- completion logic ---------- */
 const todayKey = () => fmtDay();
@@ -159,6 +204,47 @@ function taskCard(task) {
   return el;
 }
 
+function personCard(p, compact = false) {
+  const ch = CHANNELS[p.channel] || CHANNELS.sms;
+  const el = document.createElement('div');
+  el.className = 'card person-card' + (p.owe ? ' owe' : '');
+  const sub = p.owe
+    ? `<span class="owe-badge">needs a reply</span>`
+    : `<span class="last-contact ${(!p.lastContacted || Date.now() - p.lastContacted > 6048e5) ? 'stale' : ''}">reached out ${relTime(p.lastContacted)}</span>`;
+  el.innerHTML = `
+    <span class="card-emoji">${p.emoji || '🙂'}</span>
+    <div class="card-body">
+      <div class="card-name">${escapeHtml(p.name)}</div>
+      <div class="card-meta">${sub}${p.note ? `<span>📝 ${escapeHtml(p.note)}</span>` : ''}</div>
+    </div>
+    <div class="person-actions">
+      ${compact ? '' : `<button class="owe-toggle" title="Toggle 'needs a reply'">${p.owe ? '🔕' : '🔔'}</button>`}
+      <button class="contact-btn">${ch.icon} ${ch.label}</button>
+    </div>`;
+  $('.contact-btn', el).addEventListener('click', (e) => { e.stopPropagation(); openContact(p); });
+  if (!compact) {
+    $('.owe-toggle', el).addEventListener('click', (e) => {
+      e.stopPropagation(); p.owe = !p.owe; savePeople(); renderPeople(); renderToday();
+    });
+    el.addEventListener('click', () => openPersonModal(p));
+  }
+  return el;
+}
+
+function renderPeople() {
+  const list = $('#peopleList');
+  if (!list) return;
+  // owe-a-reply first, then by longest-since-contact
+  const sorted = [...people].sort((a, b) =>
+    (b.owe - a.owe) || ((a.lastContacted || 0) - (b.lastContacted || 0)));
+  list.innerHTML = '';
+  if (sorted.length === 0) {
+    list.innerHTML = '<div class="empty">Add the people you keep meaning to text back. One tap = chat opens, already addressed. 💬</div>';
+  } else {
+    sorted.forEach(p => list.appendChild(personCard(p)));
+  }
+}
+
 function renderToday() {
   const dailies = habits.filter(h => h.freq === 'daily');
   const weeklies = habits.filter(h => h.freq === 'weekly');
@@ -170,6 +256,13 @@ function renderToday() {
   const wl = $('#weeklyList'); wl.innerHTML = '';
   weeklies.forEach(h => wl.appendChild(habitCard(h)));
   $('#weeklyBlock').hidden = weeklies.length === 0;
+
+  // people who need a reply
+  const owed = people.filter(p => p.owe);
+  const rl = $('#replyList'); rl.innerHTML = '';
+  owed.forEach(p => rl.appendChild(personCard(p, true)));
+  $('#replyBlock').hidden = owed.length === 0;
+  $('#replyCount').textContent = owed.length;
 
   const openTasks = tasks.filter(t => !t.done);
   const tel = $('#todayErrandsList'); tel.innerHTML = '';
@@ -225,6 +318,7 @@ function renderLists() {
   };
   fill('errandsList', errands, 'No to-dos. Add one above. ☝️');
   fill('projectsList', projects, 'No projects yet. What do you want to nudge forward?');
+  renderPeople();
 }
 
 /* ---------- Me view ---------- */
@@ -318,6 +412,50 @@ function deleteHabit() {
 }
 
 /* ============================================================
+   PERSON MODAL
+   ============================================================ */
+let editingPerson = null;
+function syncHandleLabel() {
+  const ch = CHANNELS[$('#personChannel').value] || CHANNELS.sms;
+  $('#personHandleLabel').textContent = ch.handleLabel;
+  $('#personHandle').placeholder = ch.ph;
+}
+function openPersonModal(person) {
+  editingPerson = person || null;
+  $('#personModalTitle').textContent = person ? 'Edit person' : 'Add a person';
+  $('#personName').value = person?.name || '';
+  $('#personEmoji').value = person?.emoji || '';
+  $('#personChannel').value = person?.channel || 'sms';
+  $('#personHandle').value = person?.handle || '';
+  $('#personNote').value = person?.note || '';
+  $('#personDeleteBtn').hidden = !person;
+  syncHandleLabel();
+  $('#personModal').hidden = false;
+}
+function closePersonModal() { $('#personModal').hidden = true; editingPerson = null; }
+function savePersonFromModal() {
+  const name = $('#personName').value.trim();
+  const handle = $('#personHandle').value.trim();
+  if (!name) { toast('Who is it? Add a name 🙂'); return; }
+  if (!handle) { toast('Add a number/email so one tap can reach them.'); return; }
+  const data = {
+    name, handle,
+    emoji: $('#personEmoji').value.trim() || '🙂',
+    channel: $('#personChannel').value,
+    note: $('#personNote').value.trim(),
+  };
+  if (editingPerson) { Object.assign(editingPerson, data); }
+  else { people.push({ id: uid(), owe: true, lastContacted: null, ...data }); }
+  savePeople(); closePersonModal(); renderPeople(); renderToday();
+  toast('Saved ✨');
+}
+function deletePerson() {
+  if (!editingPerson) return;
+  people = people.filter(p => p.id !== editingPerson.id);
+  savePeople(); closePersonModal(); renderPeople(); renderToday();
+}
+
+/* ============================================================
    BRAIN DUMP — fast capture, lands as a to-do
    ============================================================ */
 function openDump() { $('#dumpText').value = ''; $('#dumpModal').hidden = false; setTimeout(() => $('#dumpText').focus(), 50); }
@@ -403,7 +541,7 @@ async function scheduleReminders() {
    EXPORT / IMPORT
    ============================================================ */
 function exportData() {
-  const data = { habits, tasks, logs, meta, exportedAt: new Date().toISOString(), app: 'KhimVentions', v: 1 };
+  const data = { habits, tasks, logs, meta, people, exportedAt: new Date().toISOString(), app: 'KhimVentions', v: 2 };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -417,8 +555,8 @@ function importData(file) {
     try {
       const data = JSON.parse(reader.result);
       if (!data.habits) throw new Error('not a KhimVentions backup');
-      habits = data.habits; tasks = data.tasks || []; logs = data.logs || {}; meta = data.meta || meta;
-      saveHabits(); saveTasks(); saveLogs(); saveMeta();
+      habits = data.habits; tasks = data.tasks || []; logs = data.logs || {}; meta = data.meta || meta; people = data.people || [];
+      saveHabits(); saveTasks(); saveLogs(); saveMeta(); savePeople();
       renderAll(); toast('Backup restored ✅');
     } catch (e) { toast('Couldn’t read that file 😕'); }
   };
@@ -502,7 +640,18 @@ function init() {
     $$('.seg').forEach(x => x.classList.toggle('active', x === s));
     $('#errandsList').hidden = activeList !== 'errands';
     $('#projectsList').hidden = activeList !== 'projects';
+    $('#peoplePane').hidden = activeList !== 'people';
+    // the type-and-add box only makes sense for to-dos/projects
+    $('.quick-add').style.display = activeList === 'people' ? 'none' : 'flex';
   }));
+
+  // people
+  $('#addPersonBtn').addEventListener('click', () => openPersonModal(null));
+  $('#personChannel').addEventListener('change', syncHandleLabel);
+  $('#personSaveBtn').addEventListener('click', savePersonFromModal);
+  $('#personCancelBtn').addEventListener('click', closePersonModal);
+  $('#personDeleteBtn').addEventListener('click', deletePerson);
+  $('#personModal').addEventListener('click', e => { if (e.target.id === 'personModal') closePersonModal(); });
 
   // quick add errand
   const addErrand = () => {
