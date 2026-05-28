@@ -96,6 +96,41 @@ body {
 .progress-pct { font-size: 34px; font-weight: 800; letter-spacing: -1px; }
 .progress-sub { font-size: 13px; color: var(--text-dim); }
 .encouragement { text-align: center; color: var(--text-dim); font-size: 15px; margin: 14px 8px 0; min-height: 20px; }
+.focus-launch {
+  margin-top: 14px; min-height: 44px; padding: 0 22px; border-radius: 22px;
+  border: 1px solid var(--line); background: var(--bg-soft); color: var(--text);
+  font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.focus-launch:active { transform: scale(0.96); }
+
+/* ===== Just one thing (focus mode) ===== */
+.focus-overlay {
+  position: fixed; inset: 0; z-index: 75;
+  background: radial-gradient(120% 90% at 50% 0%, #1a2030 0%, var(--bg) 60%);
+  display: flex; align-items: center; justify-content: center; padding: 28px;
+  animation: fadein 0.25s ease;
+}
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.focus-exit {
+  position: absolute; top: calc(18px + var(--safe-top)); right: 18px;
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--bg-soft); color: var(--text-dim); font-size: 20px; cursor: pointer;
+}
+.focus-inner { text-align: center; max-width: 420px; width: 100%; animation: focusin 0.3s cubic-bezier(.4,1.4,.5,1); }
+@keyframes focusin { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.focus-kicker { text-transform: uppercase; letter-spacing: 2px; font-size: 13px; color: var(--accent); font-weight: 700; margin: 0 0 24px; }
+.focus-emoji { font-size: 84px; line-height: 1; margin-bottom: 18px; }
+.focus-name { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; margin: 0 0 8px; line-height: 1.2; }
+.focus-sub { color: var(--text-dim); font-size: 16px; margin: 0 0 32px; }
+.focus-done {
+  width: 100%; min-height: 64px; border: none; border-radius: 20px;
+  background: linear-gradient(135deg, var(--good), #36d27a); color: #06210f;
+  font-size: 20px; font-weight: 800; cursor: pointer;
+  box-shadow: 0 8px 24px rgba(74,222,128,0.3);
+}
+.focus-done:active { transform: scale(0.97); }
+.focus-another { margin-top: 16px; background: none; border: none; color: var(--text-dim); font-size: 15px; font-weight: 600; cursor: pointer; padding: 10px; }
+.focus-count { margin-top: 22px; font-size: 13px; color: var(--text-dim); }
 
 /* ===== Cards ===== */
 .card-list { display: flex; flex-direction: column; gap: 10px; }
@@ -255,12 +290,12 @@ body {
 .toast {
   position: fixed; left: 50%; bottom: calc(90px + var(--safe-bottom)); transform: translateX(-50%);
   background: var(--card); color: var(--text); border: 1px solid var(--line);
-  padding: 12px 18px; border-radius: 14px; font-size: 15px; z-index: 60;
+  padding: 12px 18px; border-radius: 14px; font-size: 15px; z-index: 95;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4); animation: pop 0.2s ease; max-width: 88%;
 }
 @keyframes pop { from { transform: translate(-50%, 10px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 
 /* ===== Confetti ===== */
-.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 70; }
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 90; }
 
 [hidden] { display: none !important; }

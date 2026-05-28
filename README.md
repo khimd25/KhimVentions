@@ -19,6 +19,11 @@ no monthly bill, nothing to break. Your data lives on your device.
   first). No copy-paste, no app-switching.
 - **Important things look important.** Health (meds/vitamins) is colour-coded
   apart from "tidy one thing."
+- **"Just one thing" mode.** Overwhelmed days freeze you at the *list*, not the task.
+  Tap **🎯 Just one thing** on the Today screen and the whole app collapses to a
+  single full-screen item — no scrolling, no choosing. It picks health-critical
+  habits (meds/vitamins) first, then the rest. Finish it and the next one slides in;
+  "show me another" if it's not the right one right now.
 - **Brain dump button.** The big `＋` top-right captures a racing thought instantly
   so it stops bouncing around your head. Sort it later. **Tap the mic and just talk** —
   voice is transcribed live, and each pause becomes its own to-do, so saying

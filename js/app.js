@@ -561,6 +561,73 @@ function handleShareTarget() {
 }
 
 /* ============================================================
+   "JUST ONE THING" — focus mode for overwhelmed days
+   ============================================================ */
+let focusQueue = [], focusIdx = 0;
+const CAT_PRIORITY = { health: 0, body: 1, home: 2, connection: 3, other: 4 };
+
+function buildFocusQueue() {
+  const q = [];
+  // 1. daily habits not done — health-critical (meds/vitamins) first
+  habits.filter(h => h.freq === 'daily' && !isDoneToday(h))
+    .sort((a, b) => (CAT_PRIORITY[a.category] ?? 9) - (CAT_PRIORITY[b.category] ?? 9))
+    .forEach(h => q.push({ kind: 'habit', ref: h, emoji: h.emoji || '✅', name: h.name, sub: 'daily habit', label: 'Done ✓' }));
+  // 2. weekly habits not done
+  habits.filter(h => h.freq === 'weekly' && !isDoneToday(h))
+    .forEach(h => q.push({ kind: 'habit', ref: h, emoji: h.emoji || '✅', name: h.name, sub: 'this week', label: 'Done ✓' }));
+  // 3. people waiting on a reply
+  people.filter(p => p.owe)
+    .forEach(p => q.push({ kind: 'person', ref: p, emoji: p.emoji || '🙂', name: 'Reply to ' + p.name, sub: p.note || '', label: (CHANNELS[p.channel]?.icon || '💬') + ' Reply' }));
+  // 4. open to-dos, then projects
+  tasks.filter(t => !t.done && t.type === 'errand')
+    .forEach(t => q.push({ kind: 'task', ref: t, emoji: '📋', name: t.title, sub: 'to-do', label: 'Done ✓' }));
+  tasks.filter(t => !t.done && t.type === 'project')
+    .forEach(t => q.push({ kind: 'task', ref: t, emoji: '🚀', name: t.title, sub: 'side project', label: 'Did a bit ✓' }));
+  return q;
+}
+
+function openFocus() { focusQueue = buildFocusQueue(); focusIdx = 0; $('#focusMode').hidden = false; renderFocus(); }
+function closeFocus() { $('#focusMode').hidden = true; renderAll(); }
+
+function renderFocus() {
+  const inner = $('#focusInner');
+  if (focusQueue.length === 0) {
+    inner.innerHTML = `
+      <p class="focus-kicker">Nothing's demanding you</p>
+      <div class="focus-emoji">🧘</div>
+      <h2 class="focus-name">You're all clear.</h2>
+      <p class="focus-sub">Genuinely nothing left to do right now. Breathe — you earned it.</p>
+      <button class="focus-done" id="focusCloseBtn">Done</button>`;
+    $('#focusCloseBtn').addEventListener('click', closeFocus);
+    return;
+  }
+  if (focusIdx >= focusQueue.length) focusIdx = 0;
+  const item = focusQueue[focusIdx];
+  inner.innerHTML = `
+    <p class="focus-kicker">Just this one thing</p>
+    <div class="focus-emoji">${item.emoji}</div>
+    <h2 class="focus-name">${escapeHtml(item.name)}</h2>
+    ${item.sub ? `<p class="focus-sub">${escapeHtml(item.sub)}</p>` : '<p class="focus-sub"></p>'}
+    <button class="focus-done" id="focusDoneBtn">${escapeHtml(item.label)}</button>
+    ${focusQueue.length > 1 ? '<button class="focus-another" id="focusAnotherBtn">Not this — show me another</button>' : ''}
+    <p class="focus-count">${focusQueue.length} thing${focusQueue.length > 1 ? 's' : ''} on your plate · one at a time</p>`;
+  $('#focusDoneBtn').addEventListener('click', () => completeFocus(item));
+  if (focusQueue.length > 1) {
+    $('#focusAnotherBtn').addEventListener('click', () => { focusIdx = (focusIdx + 1) % focusQueue.length; renderFocus(); });
+  }
+}
+
+function completeFocus(item) {
+  if (item.kind === 'habit') { if (!isDoneToday(item.ref)) toggleHabit(item.ref); }
+  else if (item.kind === 'task') { item.ref.done = true; item.ref.completedAt = Date.now(); saveTasks(); }
+  else if (item.kind === 'person') { openContact(item.ref); } // opens chat + clears the reply
+  haptic();
+  const btn = $('#focusDoneBtn'); if (btn) burstConfetti(btn);
+  // rebuild (the completed item drops out) and show the next one
+  setTimeout(() => { focusQueue = buildFocusQueue(); focusIdx = 0; renderFocus(); }, 280);
+}
+
+/* ============================================================
    NOTIFICATIONS / REMINDERS
    ============================================================ */
 async function enableNotifs() {
@@ -767,6 +834,10 @@ function init() {
   $('#habitCancelBtn').addEventListener('click', closeHabitModal);
   $('#habitDeleteBtn').addEventListener('click', deleteHabit);
   $('#habitModal').addEventListener('click', e => { if (e.target.id === 'habitModal') closeHabitModal(); });
+
+  // just one thing (focus mode)
+  $('#focusLaunchBtn').addEventListener('click', openFocus);
+  $('#focusExit').addEventListener('click', closeFocus);
 
   // notifs + data
   $('#enableNotifsBtn').addEventListener('click', enableNotifs);
