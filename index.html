@@ -87,7 +87,14 @@
 
     <!-- ME (stats + manage + settings) -->
     <section class="view" id="view-me" hidden>
+      <div class="companion-card" id="companionCard"></div>
+
       <div class="stats-row" id="statsRow"></div>
+
+      <div class="section-block">
+        <h2 class="block-title">This week's wins 🎉</h2>
+        <div class="wins-card" id="winsCard"></div>
+      </div>
 
       <div class="section-block">
         <h2 class="block-title">Last 2 weeks</h2>
@@ -233,6 +240,20 @@
         <span class="spacer"></span>
         <button class="text-btn" id="dumpCancelBtn">Cancel</button>
         <button class="btn-primary" id="dumpSaveBtn">Capture</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Cat treat modal ===== -->
+  <div class="modal-backdrop" id="catModal" hidden>
+    <div class="modal cat-modal">
+      <h3 id="catTitle">A little treat 🐾</h3>
+      <div class="cat-photo-wrap"><img id="catPhoto" alt="A random cat" /></div>
+      <p class="cat-caption" id="catCaption"></p>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button class="text-btn" id="catAnotherBtn">Another</button>
+        <button class="btn-primary" id="catCloseBtn">Aww, thanks</button>
       </div>
     </div>
   </div>

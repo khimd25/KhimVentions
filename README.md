@@ -9,6 +9,13 @@ no monthly bill, nothing to break. Your data lives on your device.
 ## Why it's built this way (the ADHD design rules)
 
 - **One tap to log.** No forms. Tap a card → done → little dopamine burst. 🎉
+- **A cat that levels up with you.** Every habit and to-do you finish earns XP and
+  floats a little `+XP`. Your cat companion (on the **Me** tab — tap to name it)
+  grows through stages as you level up. Level-ups throw confetti and reward you with
+  a real cat photo. There's a 🐾 **Give me a cat** button any time you want a hit.
+- **Weekly wins, no misses.** The **Me** tab shows what you *did* this week —
+  habits done, to-dos cleared, perfect days, people reached. Misses are never
+  counted against you.
 - **No guilt.** A missed day fades quietly. Streaks forgive "today not done yet"
   so you don't lose a 12-day streak just because it's 2pm. Get back on, no shame.
 - **Lives where your eyes are.** Home-screen icon + reminder notifications so you

@@ -176,8 +176,9 @@ function habitCard(habit) {
     </div>
     <span class="check">✓</span>`;
   el.addEventListener('click', () => {
+    const before = totalXP();
     const nowDone = toggleHabit(habit);
-    if (nowDone) { burstConfetti(el); haptic(); }
+    if (nowDone) { burstConfetti(el); haptic(); floatXP(el, totalXP() - before); }
     renderToday();
   });
   return el;
@@ -192,10 +193,11 @@ function taskCard(task) {
     <button class="card-edit" title="Remove">🗑️</button>`;
   $('.check', el).parentElement.addEventListener('click', (e) => {
     if (e.target.closest('.card-edit')) return;
+    const before = totalXP();
     task.done = !task.done;
     task.completedAt = task.done ? Date.now() : null;
     saveTasks();
-    if (task.done) { burstConfetti(el); haptic(); toast('Nice. One less thing. ✨'); }
+    if (task.done) { burstConfetti(el); haptic(); floatXP(el, totalXP() - before); toast('Nice. One less thing. ✨'); }
     renderLists(); renderToday();
   });
   $('.card-edit', el).addEventListener('click', () => {
@@ -284,6 +286,7 @@ function renderToday() {
   $('#encouragement').textContent = encourage(pct, done, total);
 
   scheduleReminders();
+  checkLevelUp();
 }
 
 function setRing(pct) {
@@ -372,7 +375,143 @@ function renderMe() {
 
   // notif state
   updateNotifUI();
+
+  // reward layer
+  renderCompanion();
+  renderWins();
 }
+
+/* ============================================================
+   REWARD LAYER — leveling cat companion + weekly wins
+   ============================================================ */
+/* XP is derived from history (deterministic — never double-counts, survives import) */
+function totalXP() {
+  let habitCompletions = 0;
+  for (const d in logs) habitCompletions += (logs[d] || []).length;
+  const doneTasks = tasks.filter(t => t.done).length;
+  const activeDays = Object.keys(logs).filter(d => (logs[d] || []).length > 0).length;
+  return habitCompletions * 10 + doneTasks * 8 + activeDays * 5;
+}
+function catLevel(xp) {
+  let level = 1, need = 100, acc = 0;
+  while (xp >= acc + need) { acc += need; level++; need = 100 * level; }
+  const into = xp - acc;
+  return { level, into, need, pct: Math.round((into / need) * 100) };
+}
+const CAT_STAGES = [
+  { min: 1, emoji: '🐱', title: 'Kitten' },
+  { min: 3, emoji: '😺', title: 'Curious cat' },
+  { min: 5, emoji: '😸', title: 'Happy cat' },
+  { min: 8, emoji: '😻', title: 'Beloved cat' },
+  { min: 12, emoji: '😼', title: 'Cool cat' },
+  { min: 16, emoji: '🐈', title: 'Fine feline' },
+  { min: 20, emoji: '🦁', title: 'Mane character' },
+  { min: 25, emoji: '👑', title: 'Royal cat' },
+];
+function catStage(level) { let s = CAT_STAGES[0]; for (const st of CAT_STAGES) if (level >= st.min) s = st; return s; }
+function catMood() {
+  const ds = (logs[todayKey()] || []).length;
+  const taskToday = tasks.some(t => t.done && t.completedAt && fmtDay(new Date(t.completedAt)) === todayKey());
+  const dailies = habits.filter(h => h.freq === 'daily');
+  if (dailies.length > 0 && dailies.every(isDoneToday)) return 'over the moon 😻';
+  if (ds > 0 || taskToday) return 'purring contentedly 😺';
+  return 'waiting for you 🐾';
+}
+
+function renderCompanion() {
+  const el = $('#companionCard'); if (!el) return;
+  const lv = catLevel(totalXP());
+  const stage = catStage(lv.level);
+  const name = meta.catName || 'Your cat';
+  el.innerHTML = `
+    <div class="companion-top">
+      <div class="companion-avatar">${stage.emoji}</div>
+      <div class="companion-info">
+        <div class="companion-name" id="companionName">${escapeHtml(name)} <span class="rename-hint">✏️</span></div>
+        <div class="companion-stage">Lv.${lv.level} · ${stage.title}</div>
+        <div class="companion-mood">${catMood()}</div>
+      </div>
+    </div>
+    <div class="xp-bar"><div class="xp-fill" style="width:${lv.pct}%"></div></div>
+    <div class="xp-label">${lv.into} / ${lv.need} XP → level ${lv.level + 1}</div>
+    <button class="wide-btn ghost cat-treat-btn" id="catTreatBtn">🐾 Give me a cat</button>`;
+  $('#companionName').addEventListener('click', renameCat);
+  $('#catTreatBtn').addEventListener('click', () => openCatModal('A little treat 🐾', `${meta.catName || 'Your cat'} says hi.`));
+}
+function renameCat() {
+  const n = prompt('Name your companion:', meta.catName || '');
+  if (n && n.trim()) { meta.catName = n.trim().slice(0, 20); saveMeta(); renderCompanion(); }
+}
+
+function renderWins() {
+  const el = $('#winsCard'); if (!el) return;
+  const weekAgo = Date.now() - 7 * 86400000;
+  const dailies = habits.filter(h => h.freq === 'daily');
+  let completions = 0, perfect = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const ids = logs[fmtDay(d)] || [];
+    completions += ids.length;
+    const dailyDone = ids.filter(id => dailies.some(h => h.id === id)).length;
+    if (dailies.length > 0 && dailyDone >= dailies.length) perfect++;
+  }
+  const tasksWeek = tasks.filter(t => t.done && t.completedAt && t.completedAt >= weekAgo).length;
+  const repliesWeek = people.filter(p => p.lastContacted && p.lastContacted >= weekAgo).length;
+  const headline = (completions + tasksWeek === 0)
+    ? 'New week, clean slate. Tap one thing to start. 🌱'
+    : perfect >= 3 ? "You're on fire this week. 🔥"
+    : 'Look at everything you showed up for. 👏';
+  el.innerHTML = `
+    <p class="wins-headline">${headline}</p>
+    <div class="wins-grid">
+      <div class="win"><span class="win-num">${completions}</span><span class="win-lbl">habits done</span></div>
+      <div class="win"><span class="win-num">${tasksWeek}</span><span class="win-lbl">to-dos cleared</span></div>
+      <div class="win"><span class="win-num">${perfect}</span><span class="win-lbl">perfect days</span></div>
+      <div class="win"><span class="win-num">${repliesWeek}</span><span class="win-lbl">people reached</span></div>
+    </div>
+    <p class="wins-note">Only wins here. The misses don't count against you. 🫶</p>`;
+}
+
+/* +XP dopamine float */
+function floatXP(originEl, n) {
+  if (!n || n <= 0) return;
+  const r = originEl.getBoundingClientRect();
+  const f = document.createElement('div');
+  f.className = 'xp-float'; f.textContent = '+' + n + ' XP';
+  f.style.left = (r.right - 60) + 'px'; f.style.top = (r.top + 6) + 'px';
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 900);
+}
+
+/* Level-up celebration (guarded so it only fires when the level actually increases) */
+function checkLevelUp() {
+  const lvl = catLevel(totalXP()).level;
+  if (meta.lastLevel == null) { meta.lastLevel = lvl; saveMeta(); return; }
+  if (lvl > meta.lastLevel) {
+    meta.lastLevel = lvl; saveMeta();
+    centerConfetti(); haptic();
+    const stage = catStage(lvl);
+    toast(`Level ${lvl}! ${stage.emoji} ${meta.catName || 'Your cat'} grew.`);
+    setTimeout(() => openCatModal(`Level ${lvl} — ${stage.title}! ${stage.emoji}`,
+      `${meta.catName || 'Your cat'} leveled up. A treat for both of you.`), 450);
+  }
+}
+
+/* Cat photo treat (cataas.com — optional, degrades gracefully offline) */
+function openCatModal(title, caption) {
+  $('#catTitle').textContent = title;
+  $('#catCaption').textContent = caption || '';
+  $('#catModal').hidden = false;
+  fetchCat();
+}
+function fetchCat() {
+  const img = $('#catPhoto'), cap = $('#catCaption');
+  img.style.opacity = '0.3';
+  img.onload = () => { img.style.opacity = '1'; };
+  img.onerror = () => { img.removeAttribute('src'); img.style.opacity = '1'; cap.textContent = "Cat's napping (no internet) — here's one anyway: 🐱"; };
+  img.src = 'https://cataas.com/cat?width=600&' + Date.now();
+}
+function closeCatModal() { $('#catModal').hidden = true; $('#catPhoto').removeAttribute('src'); }
 
 /* ============================================================
    HABIT MODAL
@@ -731,12 +870,15 @@ function toast(msg) {
 function haptic() { if (navigator.vibrate) navigator.vibrate(12); }
 
 function burstConfetti(originEl) {
+  const rect = originEl.getBoundingClientRect();
+  confettiBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+function centerConfetti() { confettiBurst(innerWidth / 2, innerHeight * 0.35); }
+function confettiBurst(ox, oy) {
   const canvas = $('#confetti');
   canvas.hidden = false;
   const ctx = canvas.getContext('2d');
   canvas.width = innerWidth; canvas.height = innerHeight;
-  const rect = originEl.getBoundingClientRect();
-  const ox = rect.left + rect.width / 2, oy = rect.top + rect.height / 2;
   const colors = ['#7c9cff', '#b48cff', '#4ade80', '#fbbf24', '#f472b6'];
   const parts = Array.from({ length: 26 }, () => ({
     x: ox, y: oy,
@@ -838,6 +980,11 @@ function init() {
   // just one thing (focus mode)
   $('#focusLaunchBtn').addEventListener('click', openFocus);
   $('#focusExit').addEventListener('click', closeFocus);
+
+  // cat treat modal
+  $('#catAnotherBtn').addEventListener('click', fetchCat);
+  $('#catCloseBtn').addEventListener('click', closeCatModal);
+  $('#catModal').addEventListener('click', e => { if (e.target.id === 'catModal') closeCatModal(); });
 
   // notifs + data
   $('#enableNotifsBtn').addEventListener('click', enableNotifs);
