@@ -1,10 +1,13 @@
 /* KhimVentions service worker — offline cache + notification clicks */
-const CACHE = 'khimventions-v1';
+const CACHE = 'khimventions-v2';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './js/app.js',
+  './game.html',
+  './css/game.css',
+  './js/game.js',
   './manifest.webmanifest',
   './icons/icon.svg',
   './icons/icon-192.png',
