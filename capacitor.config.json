@@ -1,0 +1,9 @@
+{
+  "appId": "com.khimdeeee.khimventions",
+  "appName": "KhimVentions",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#0f1115"
+  }
+}
