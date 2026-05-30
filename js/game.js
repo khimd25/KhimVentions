@@ -503,7 +503,8 @@ function screenImport() {
       ${topBar('🌍 Your World', '')}
       <p class="hint">Theme-only: your real tasks just name the monsters and biomes — the dice game underneath is the same. Pick a source.</p>
       <div class="list">
-        <button class="btn wide primary" id="mockBtn">✨ Use a sample life (mock data)</button>
+        <button class="btn wide primary" id="repoBtn">🗂️ Load my Structured export</button>
+        <button class="btn wide" id="mockBtn">✨ Use a sample life (mock data)</button>
         <button class="btn wide" id="trackerBtn">🧠 Use my tracker's own tasks</button>
         <label class="btn wide file-btn">📂 Choose a file — Structured JSON or .ics
           <input type="file" id="fileInput" accept=".json,.ics,application/json,text/calendar" hidden /></label>
@@ -512,6 +513,17 @@ function screenImport() {
       <div id="worldPreview" class="world-preview"></div>
     </div>`);
   $('#backBtn').onclick = () => go(screenHome);
+  $('#repoBtn').onclick = async () => {
+    toast('Loading your Structured export…');
+    try {
+      const res = await fetch('structured%20data%20files', { cache: 'no-store' });
+      if (!res.ok) throw new Error('fetch failed');
+      const items = parseJSONToItems(await res.text());
+      const world = buildWorld(items, 'structured');
+      if (!world) return toast('No tasks found in the export 😕');
+      applyWorld(world, `Loaded ${world.count} of your real tasks. 🗂️`);
+    } catch { toast("Couldn't load the repo file (offline, or it was moved/removed)."); }
+  };
   $('#mockBtn').onclick = () => applyWorld(buildWorld(MOCK_ITEMS, 'mock'), 'Sample life loaded — meet your monsters. ✨');
   $('#trackerBtn').onclick = () => {
     const items = readTrackerItems();
