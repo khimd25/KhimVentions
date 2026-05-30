@@ -328,6 +328,48 @@ const tLevel = (id) => meta.talents[id] || 0;
 const tVal = (id) => TALENTS.find(t => t.id === id).val(tLevel(id));
 
 /* ============================================================
+   BACKUP — export/import all progress (pure, unit-testable)
+   Survives a fresh reinstall (where on-device storage is wiped) and
+   moves a save between devices. Captures the full kvg.* namespace:
+   meta (fish/heroes/talents/stats), the in-progress run, and the
+   themed world. The tracker's kv.* data is untouched and not included.
+   ============================================================ */
+const BACKUP_FORMAT = 'khimventures-save';
+const BACKUP_VERSION = 1;
+
+/* Build the backup object from a plain {meta, run, world} snapshot. */
+function buildBackup(state) {
+  return {
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    data: {
+      meta:  state.meta  || null,
+      run:   state.run   || null,
+      world: state.world || null,
+    },
+  };
+}
+
+/* Validate + extract the {meta, run, world} payload from parsed JSON.
+   Throws a friendly Error if it isn't a KhimVentures backup. */
+function parseBackup(text) {
+  let obj;
+  try { obj = typeof text === 'string' ? JSON.parse(text) : text; }
+  catch { throw new Error("That file isn't valid JSON."); }
+  if (!obj || obj.format !== BACKUP_FORMAT || !obj.data)
+    throw new Error("That's not a KhimVentures backup file.");
+  if (typeof obj.version === 'number' && obj.version > BACKUP_VERSION)
+    throw new Error('That backup is from a newer version of the game.');
+  const d = obj.data;
+  // meta is the part worth guarding — merge onto defaults so older/partial
+  // backups still load cleanly.
+  const merged = Object.assign({}, DEFAULT_META, d.meta || {});
+  merged.talents = Object.assign({}, DEFAULT_META.talents, (d.meta && d.meta.talents) || {});
+  return { meta: merged, run: d.run || null, world: d.world || null };
+}
+
+/* ============================================================
    COMBAT MATH (pure — unit-testable)
    ============================================================ */
 const COMBO_INFO = {
@@ -487,6 +529,11 @@ function screenHome() {
         <span>🏆 best depth ${meta.bestDepth}</span>
         <span>👑 ${meta.runsWon} won</span>
       </div>
+      <div class="backup-row">
+        <button class="btn tiny ghost" id="exportBtn">⬇️ Back up save</button>
+        <label class="btn tiny ghost file-btn">⬆️ Restore
+          <input type="file" id="restoreInput" accept=".json,application/json" hidden /></label>
+      </div>
       <a class="back-tracker" href="index.html">← home</a>
     </div>`);
   if (resumable) $('#resumeBtn').onclick = () => go(screenMap);
@@ -494,6 +541,41 @@ function screenHome() {
   $('#rosterBtn').onclick = () => go(screenRoster);
   $('#talentsBtn').onclick = () => go(screenTalents);
   $('#worldBtn').onclick = () => go(screenImport);
+  $('#exportBtn').onclick = exportSave;
+  $('#restoreInput').onchange = (e) => importSaveFile(e.target.files[0], e.target);
+}
+
+/* Download the full save as a dated JSON file (works on iOS — lands in
+   Files / "Downloads", or the share sheet on older Safari). */
+function exportSave() {
+  const backup = buildBackup({ meta, run, world: WORLD });
+  const stamp = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `khimventures-save-${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  haptic(14); toast('Save backed up to a file. 💾');
+}
+
+/* Restore from a chosen backup file, replacing current progress. */
+function importSaveFile(file, inputEl) {
+  if (inputEl) inputEl.value = '';   // allow re-picking the same file later
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let restored;
+    try { restored = parseBackup(String(reader.result)); }
+    catch (err) { return toast(err.message || "Couldn't read that backup."); }
+    if (!confirm('Restore this backup? It replaces your current progress on this device.')) return;
+    meta = restored.meta; saveMeta();
+    run = restored.run;   saveRun();
+    setWorld(restored.world);
+    haptic(18); toast('Save restored. 🎉'); go(screenHome);
+  };
+  reader.onerror = () => toast("Couldn't read that file.");
+  reader.readAsText(file);
 }
 
 /* ---------- World / import screen ---------- */
@@ -1100,6 +1182,7 @@ if (typeof module !== 'undefined' && module.exports) {
     _genMap: genMap, _getRun: () => run, _getMeta: () => meta,
     buildWorld, setWorld, readTrackerItems, parseICSTitles, parseJSONTitles,
     parseStructuredItems, parseJSONToItems, guessCategory, MOCK_ITEMS,
+    buildBackup, parseBackup, BACKUP_FORMAT, BACKUP_VERSION, DEFAULT_META,
   };
 } else {
   document.addEventListener('DOMContentLoaded', () => {
