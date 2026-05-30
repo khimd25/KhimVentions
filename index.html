@@ -11,268 +11,67 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    :root {
+      --bg:#0f1115; --card:#1d212b; --line:#2a2f3a; --text:#eef1f6; --text-dim:#9aa3b2;
+      --accent:#7c9cff; --accent-2:#b48cff; --radius:18px;
+      --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+    }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body { margin:0; min-height:100vh; background:radial-gradient(120% 80% at 50% 0%, #181c26 0%, var(--bg) 60%);
+      color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+      font-size:17px; line-height:1.4; -webkit-user-select:none; user-select:none; }
+    .wrap { max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;
+      justify-content:center; gap:18px; padding:calc(24px + var(--safe-top)) 20px calc(28px + var(--safe-bottom)); }
+    .hello { text-align:center; }
+    .hello h1 { font-size:30px; font-weight:900; letter-spacing:-0.5px; margin:0 0 4px; }
+    .hello p { color:var(--text-dim); margin:0; }
+    .cards { display:flex; flex-direction:column; gap:14px; }
+    .launch {
+      display:flex; align-items:center; gap:16px; text-decoration:none; color:var(--text);
+      background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+      padding:20px; transition:transform .08s, border-color .15s; cursor:pointer;
+    }
+    .launch:active { transform:scale(.97); }
+    .launch.game { border-color:var(--accent-2); background:linear-gradient(180deg,#231f2e,var(--card)); }
+    .ico { font-size:46px; flex:0 0 auto; }
+    .meta { flex:1; min-width:0; }
+    .meta .name { font-size:20px; font-weight:800; }
+    .meta .sub { color:var(--text-dim); font-size:14px; margin-top:3px; }
+    .chev { color:var(--text-dim); font-size:24px; }
+    .foot { text-align:center; color:var(--text-dim); font-size:13px; }
+  </style>
 </head>
 <body>
-  <!-- ===== Header ===== -->
-  <header class="app-header">
-    <div class="header-greeting">
-      <span class="greeting-line" id="greeting">Hey</span>
-      <span class="greeting-date" id="todayDate"></span>
+  <div class="wrap">
+    <div class="hello">
+      <h1>KhimVentions</h1>
+      <p>Pick where you're headed.</p>
     </div>
-    <button class="brain-dump-btn" id="brainDumpBtn" title="Quick capture a thought">
-      <span aria-hidden="true">＋</span>
-    </button>
-  </header>
-
-  <!-- ===== Main views ===== -->
-  <main id="main">
-
-    <!-- TODAY -->
-    <section class="view" id="view-today">
-      <div class="today-summary">
-        <div class="progress-ring-wrap">
-          <svg class="progress-ring" viewBox="0 0 120 120" aria-hidden="true">
-            <circle class="ring-bg" cx="60" cy="60" r="52" />
-            <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52" />
-          </svg>
-          <div class="progress-center">
-            <span class="progress-pct" id="progressPct">0%</span>
-            <span class="progress-sub" id="progressSub">today</span>
-          </div>
-        </div>
-        <p class="encouragement" id="encouragement"></p>
-        <button class="focus-launch" id="focusLaunchBtn">🎯 Just one thing</button>
-      </div>
-
-      <div class="section-block" id="dailyBlock">
-        <h2 class="block-title">Daily <span class="count-pill" id="dailyCount"></span></h2>
-        <div class="card-list" id="dailyList"></div>
-      </div>
-
-      <div class="section-block" id="weeklyBlock">
-        <h2 class="block-title">This week <span class="count-pill" id="weeklyCount"></span></h2>
-        <div class="card-list" id="weeklyList"></div>
-      </div>
-
-      <div class="section-block" id="replyBlock" hidden>
-        <h2 class="block-title">Reply to <span class="count-pill" id="replyCount"></span></h2>
-        <div class="card-list" id="replyList"></div>
-      </div>
-
-      <div class="section-block" id="todayErrandsBlock">
-        <h2 class="block-title">On your plate</h2>
-        <div class="card-list" id="todayErrandsList"></div>
-      </div>
-    </section>
-
-    <!-- LISTS (errands + projects) -->
-    <section class="view" id="view-lists" hidden>
-      <div class="quick-add">
-        <input type="text" id="errandInput" placeholder="Add an errand or to-do…" autocomplete="off" />
-        <button id="errandAddBtn">Add</button>
-      </div>
-      <div class="seg-toggle">
-        <button class="seg active" data-list="errands">To-dos</button>
-        <button class="seg" data-list="projects">Projects</button>
-        <button class="seg" data-list="people">People</button>
-      </div>
-      <div class="card-list" id="errandsList"></div>
-      <div class="card-list" id="projectsList" hidden></div>
-      <div id="peoplePane" hidden>
-        <button class="wide-btn ghost" id="addPersonBtn">+ Add a person</button>
-        <div class="card-list" id="peopleList"></div>
-      </div>
-    </section>
-
-    <!-- ME (stats + manage + settings) -->
-    <section class="view" id="view-me" hidden>
-      <div class="companion-card" id="companionCard"></div>
-
-      <div class="stats-row" id="statsRow"></div>
-
-      <div class="section-block">
-        <h2 class="block-title">This week's wins 🎉</h2>
-        <div class="wins-card" id="winsCard"></div>
-      </div>
-
-      <div class="section-block">
-        <h2 class="block-title">Last 2 weeks</h2>
-        <div class="heatmap" id="heatmap"></div>
-        <p class="heatmap-legend">Each square is a day. Brighter = more done. Gaps are fine — just start again. 🫶</p>
-      </div>
-
-      <div class="section-block">
-        <div class="block-title-row">
-          <h2 class="block-title">Your habits</h2>
-          <button class="text-btn" id="addHabitBtn">+ Add</button>
-        </div>
-        <div class="card-list" id="manageHabits"></div>
-      </div>
-
-      <div class="section-block">
-        <h2 class="block-title">Reminders</h2>
-        <button class="wide-btn" id="enableNotifsBtn">Turn on reminders</button>
-        <p class="hint" id="notifHint"></p>
-      </div>
-
-      <div class="section-block">
-        <h2 class="block-title">Your data</h2>
-        <div class="data-btns">
-          <button class="wide-btn ghost" id="exportBtn">Export backup</button>
-          <button class="wide-btn ghost" id="importBtn">Import backup</button>
-        </div>
-        <input type="file" id="importFile" accept="application/json" hidden />
-        <p class="hint">Everything lives on this device. Export now and then so a lost phone never costs you your streaks.</p>
-      </div>
-
-      <div class="section-block">
-        <h2 class="block-title">Take a break</h2>
-        <a class="wide-btn ghost" href="game.html" style="display:block;text-align:center;text-decoration:none;color:inherit;">🎲 Play KhimVentures — dice roguelite</a>
-        <p class="hint">A little dice-roguelite side quest. Separate save, never touches your tracker data.</p>
-      </div>
-    </section>
-  </main>
-
-  <!-- ===== Bottom nav ===== -->
-  <nav class="tabbar">
-    <button class="tab active" data-view="today">
-      <span class="tab-ico">☀️</span><span class="tab-label">Today</span>
-    </button>
-    <button class="tab" data-view="lists">
-      <span class="tab-ico">📋</span><span class="tab-label">Lists</span>
-    </button>
-    <button class="tab" data-view="me">
-      <span class="tab-ico">📈</span><span class="tab-label">Me</span>
-    </button>
-  </nav>
-
-  <!-- ===== Habit editor modal ===== -->
-  <div class="modal-backdrop" id="habitModal" hidden>
-    <div class="modal">
-      <h3 id="habitModalTitle">New habit</h3>
-      <label class="field">
-        <span>Name</span>
-        <input type="text" id="habitName" placeholder="e.g. Take meds" />
-      </label>
-      <label class="field">
-        <span>Emoji</span>
-        <input type="text" id="habitEmoji" maxlength="2" placeholder="💊" />
-      </label>
-      <label class="field">
-        <span>How often</span>
-        <select id="habitFreq">
-          <option value="daily">Every day</option>
-          <option value="weekly">Once a week</option>
-        </select>
-      </label>
-      <label class="field">
-        <span>Remind me at (optional)</span>
-        <input type="time" id="habitReminder" />
-      </label>
-      <label class="field">
-        <span>Category</span>
-        <select id="habitCategory">
-          <option value="health">Health (meds, vitamins)</option>
-          <option value="body">Body (workout)</option>
-          <option value="home">Home (chores, meal prep)</option>
-          <option value="connection">Connection (cat, people)</option>
-          <option value="other">Other</option>
-        </select>
-      </label>
-      <div class="modal-actions">
-        <button class="text-btn danger" id="habitDeleteBtn" hidden>Delete</button>
-        <span class="spacer"></span>
-        <button class="text-btn" id="habitCancelBtn">Cancel</button>
-        <button class="btn-primary" id="habitSaveBtn">Save</button>
-      </div>
+    <div class="cards">
+      <a class="launch" href="tracker.html">
+        <span class="ico">🧠</span>
+        <span class="meta">
+          <span class="name">The Tracker</span>
+          <span class="sub">Habits, meds, to-dos, people — your everything, one tap to log.</span>
+        </span>
+        <span class="chev">→</span>
+      </a>
+      <a class="launch game" href="game.html">
+        <span class="ico">🎲</span>
+        <span class="meta">
+          <span class="name">KhimVentures</span>
+          <span class="sub">A pocket dice roguelite. Roll the dice, brave the den.</span>
+        </span>
+        <span class="chev">→</span>
+      </a>
     </div>
+    <p class="foot">Both live on this device · no login · nothing to break.</p>
   </div>
 
-  <!-- ===== Person editor modal ===== -->
-  <div class="modal-backdrop" id="personModal" hidden>
-    <div class="modal">
-      <h3 id="personModalTitle">Add a person</h3>
-      <p class="modal-sub">One tap will open the chat already addressed — no digging.</p>
-      <label class="field">
-        <span>Name</span>
-        <input type="text" id="personName" placeholder="e.g. Mom" />
-      </label>
-      <label class="field">
-        <span>Emoji (optional)</span>
-        <input type="text" id="personEmoji" maxlength="2" placeholder="💜" />
-      </label>
-      <label class="field">
-        <span>How to reach them</span>
-        <select id="personChannel">
-          <option value="sms">Text (SMS / iMessage)</option>
-          <option value="call">Call</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="email">Email</option>
-          <option value="telegram">Telegram</option>
-        </select>
-      </label>
-      <label class="field">
-        <span id="personHandleLabel">Phone number</span>
-        <input type="text" id="personHandle" placeholder="+1 555 123 4567" />
-      </label>
-      <label class="field">
-        <span>Note (optional)</span>
-        <input type="text" id="personNote" placeholder="e.g. owe her a reply about the weekend" />
-      </label>
-      <div class="modal-actions">
-        <button class="text-btn danger" id="personDeleteBtn" hidden>Delete</button>
-        <span class="spacer"></span>
-        <button class="text-btn" id="personCancelBtn">Cancel</button>
-        <button class="btn-primary" id="personSaveBtn">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== Brain dump modal ===== -->
-  <div class="modal-backdrop" id="dumpModal" hidden>
-    <div class="modal">
-      <h3>Brain dump 🧠</h3>
-      <p class="modal-sub">Get it out of your head. Talk or type — sort it later.</p>
-      <div class="mic-row">
-        <button class="mic-btn" id="micBtn" type="button" aria-label="Hold a thought — tap to talk">
-          <span class="mic-ico">🎤</span>
-        </button>
-        <span class="mic-status" id="micStatus">Tap the mic and just talk</span>
-      </div>
-      <textarea id="dumpText" rows="4" placeholder="What's on your mind?"></textarea>
-      <p class="hint">Each pause becomes its own to-do. Edit anything before you capture.</p>
-      <div class="modal-actions">
-        <span class="spacer"></span>
-        <button class="text-btn" id="dumpCancelBtn">Cancel</button>
-        <button class="btn-primary" id="dumpSaveBtn">Capture</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== Cat treat modal ===== -->
-  <div class="modal-backdrop" id="catModal" hidden>
-    <div class="modal cat-modal">
-      <h3 id="catTitle">A little treat 🐾</h3>
-      <div class="cat-photo-wrap"><img id="catPhoto" alt="A random cat" /></div>
-      <p class="cat-caption" id="catCaption"></p>
-      <div class="modal-actions">
-        <span class="spacer"></span>
-        <button class="text-btn" id="catAnotherBtn">Another</button>
-        <button class="btn-primary" id="catCloseBtn">Aww, thanks</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== Just one thing (focus mode) ===== -->
-  <div class="focus-overlay" id="focusMode" hidden>
-    <button class="focus-exit" id="focusExit" aria-label="Exit focus mode">✕</button>
-    <div class="focus-inner" id="focusInner"></div>
-  </div>
-
-  <div class="toast" id="toast" hidden></div>
-  <canvas class="confetti" id="confetti" hidden></canvas>
-
-  <script src="js/app.js"></script>
+  <script>
+    // keep the tracker's offline/PWA powers working from the launcher too
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  </script>
 </body>
 </html>

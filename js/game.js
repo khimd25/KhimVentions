@@ -377,7 +377,7 @@ function screenHome() {
         <span>🏆 best depth ${meta.bestDepth}</span>
         <span>👑 ${meta.runsWon} won</span>
       </div>
-      <a class="back-tracker" href="index.html">← back to the tracker</a>
+      <a class="back-tracker" href="index.html">← home</a>
     </div>`);
   if (resumable) $('#resumeBtn').onclick = () => go(screenMap);
   $('#playBtn').onclick = () => { if (resumable && !confirm('Abandon the current run and start fresh?')) return; startRun(); };

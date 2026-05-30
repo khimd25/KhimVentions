@@ -91,10 +91,14 @@ now and then so a lost device never costs you your streaks.
 ## Files
 
 ```
-index.html              app shell + views
-css/styles.css          styling (dark, calm, big tap targets)
-js/app.js               all the logic
-manifest.webmanifest    PWA manifest
+index.html              launcher — pick the Tracker or the game
+tracker.html            the tracker app shell + views
+css/styles.css          tracker styling (dark, calm, big tap targets)
+js/app.js               tracker logic
+game.html               KhimVentures — a dice roguelite side game
+css/game.css            game styling
+js/game.js              game logic (saves under kvg.*, never touches tracker data)
+manifest.webmanifest    PWA manifest (share-sheet capture routes to tracker.html)
 sw.js                   service worker (offline + reminder clicks)
 icons/                  app icons (+ gen-icons.js to regenerate)
 ```

@@ -1,8 +1,9 @@
 /* KhimVentions service worker — offline cache + notification clicks */
-const CACHE = 'khimventions-v2';
+const CACHE = 'khimventions-v3';
 const ASSETS = [
   './',
   './index.html',
+  './tracker.html',
   './css/styles.css',
   './js/app.js',
   './game.html',
@@ -46,7 +47,7 @@ self.addEventListener('notificationclick', (e) => {
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const c of list) { if ('focus' in c) return c.focus(); }
-      if (self.clients.openWindow) return self.clients.openWindow('./index.html');
+      if (self.clients.openWindow) return self.clients.openWindow('./tracker.html');
     })
   );
 });
