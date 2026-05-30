@@ -88,6 +88,12 @@ html, body {
 .home-row { display: flex; gap: 10px; }
 .home-row .btn { flex: 1; }
 .meta-strip { display: flex; justify-content: center; gap: 16px; color: var(--text-dim); font-size: 14px; font-weight: 600; }
+.world-line { text-align: center; color: var(--text-dim); font-size: 13px; }
+.map-biome { color: var(--accent-2); font-size: 14px; font-weight: 700; margin-top: 4px; }
+.file-btn { display: block; text-align: center; }
+.world-preview { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.world-card { display: block; }
+.world-card .hero-perk { margin-top: 6px; line-height: 1.5; }
 .back-tracker { color: var(--text-dim); font-size: 13px; text-decoration: none; margin-top: 6px; }
 .back-tracker:active { color: var(--text); }
 

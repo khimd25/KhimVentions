@@ -127,19 +127,88 @@ const BOSSES = [
   { emoji: '💀', name: 'Bone Tyrant' },
 ];
 function makeEnemy(kind, depth) {
-  if (kind === 'boss') {
-    const b = pick(BOSSES);
-    const hp = 120 + depth * 14;
-    return { ...b, hp, maxhp: hp, atk: 12 + Math.floor(depth * 1.3), kind };
+  let base, hp, atk;
+  if (kind === 'boss')       { base = pick(BOSSES); hp = 120 + depth * 14; atk = 12 + Math.floor(depth * 1.3); }
+  else if (kind === 'elite') { base = pick(ELITES); hp = 60 + depth * 10;  atk = 9 + depth; }
+  else                       { base = pick(FOES);   hp = 26 + depth * 7;   atk = 5 + Math.floor(depth * 0.9); }
+  // theme-only: name the monster after one of your real tasks (if a World is set)
+  const themed = themedName(kind);
+  return { emoji: base.emoji, name: themed || base.name, hp, maxhp: hp, atk, kind };
+}
+
+/* ============================================================
+   YOUR WORLD — theme the adventure from your real tasks
+   (theme-only: titles just NAME enemies/bosses/biomes; the dice
+   game underneath is unchanged. Parses Structured JSON exports,
+   .ics calendars, or the tracker's own on-device data.)
+   ============================================================ */
+const BIOME = {
+  health:     { name: 'the Apothecary Depths',   emoji: '💊' },
+  body:       { name: 'the Iron Arena',          emoji: '🏋️' },
+  home:       { name: 'the Dusthall Warren',     emoji: '🧹' },
+  connection: { name: 'the Whispering Village',  emoji: '💬' },
+  work:       { name: 'the Paperwork Catacombs', emoji: '📨' },
+  admin:      { name: 'the Paperwork Catacombs', emoji: '📨' },
+  other:      { name: 'the Tangled Wilds',       emoji: '🌫️' },
+};
+/* A believable "sample life" so the game is themed out of the box. */
+const MOCK_ITEMS = [
+  { title: 'Take meds', category: 'health' }, { title: 'Vitamins', category: 'health' },
+  { title: 'Dentist appointment', category: 'health' }, { title: 'Gym session', category: 'body' },
+  { title: 'Go for a run', category: 'body' }, { title: 'Pile of laundry', category: 'home' },
+  { title: 'Clean the litter box', category: 'home' }, { title: 'Meal prep Sunday', category: 'home' },
+  { title: 'Water the plants', category: 'home' }, { title: 'Reply to Sam', category: 'connection' },
+  { title: 'Call mom', category: 'connection' }, { title: '47 unread emails', category: 'work' },
+  { title: 'Finish the slide deck', category: 'work' }, { title: 'Tax return', category: 'work', type: 'project' },
+  { title: 'Renew passport', category: 'work', type: 'project' }, { title: 'Read that saved article', category: 'other' },
+  { title: 'Side project: KhimVentions', category: 'other', type: 'project' },
+];
+
+const dedupe = (arr) => { const seen = new Set(); return arr.filter(s => { const k = s.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }); };
+
+/* Tolerant JSON walk: grab strings under title-ish keys, at any depth. */
+function collectTitles(node, out, depth = 0) {
+  if (depth > 7 || node == null || typeof node !== 'object') return;
+  if (Array.isArray(node)) { node.forEach(n => collectTitles(n, out, depth + 1)); return; }
+  for (const [k, v] of Object.entries(node)) {
+    if (typeof v === 'string' && /^(title|name|summary|task|todo|text|label|subject|event)$/i.test(k)) {
+      const s = v.trim(); if (s && s.length <= 60) out.push(s);
+    } else collectTitles(v, out, depth + 1);
   }
-  if (kind === 'elite') {
-    const e = pick(ELITES);
-    const hp = 60 + depth * 10;
-    return { ...e, hp, maxhp: hp, atk: 9 + depth, kind };
-  }
-  const f = pick(FOES);
-  const hp = 26 + depth * 7;
-  return { ...f, hp, maxhp: hp, atk: 5 + Math.floor(depth * 0.9), kind };
+}
+function parseJSONTitles(text) { const out = []; collectTitles(JSON.parse(text), out); return dedupe(out); }
+function parseICSTitles(text) {
+  const out = [];
+  text.split(/\r?\n/).forEach(l => { const m = l.match(/^SUMMARY(?:;[^:]*)?:(.+)$/i); if (m) out.push(m[1].trim().replace(/\\,/g, ',').replace(/\\n/gi, ' ')); });
+  return dedupe(out);
+}
+/* Read the tracker's own data straight off this device (same origin). */
+function readTrackerItems() {
+  const g = (k) => { try { const v = localStorage.getItem('kv.' + k); return v ? JSON.parse(v) : null; } catch { return null; } };
+  const tasks = g('tasks') || [], habits = g('habits') || [], people = g('people') || [];
+  const items = [];
+  tasks.forEach(t => t.title && items.push({ title: t.title, category: 'other', type: t.type }));
+  habits.forEach(h => h.name && items.push({ title: h.name, category: h.category }));
+  people.forEach(p => p.name && items.push({ title: 'Message ' + p.name, category: 'connection' }));
+  return items;
+}
+/* Turn a list of titles/items into a themed world. */
+const BOSS_KW = /(tax|passport|project|deadline|report|presentation|move|file|renew|appointment|exam|interview|launch|review)/i;
+function buildWorld(rawItems, source) {
+  const items = rawItems.map(it => (typeof it === 'string') ? { title: it } : it).filter(it => it && it.title);
+  const titles = dedupe(items.map(i => i.title.trim()).filter(Boolean));
+  if (!titles.length) return null;
+  let bosses = dedupe(items.filter(i => i.type === 'project' || BOSS_KW.test(i.title)).map(i => i.title));
+  if (bosses.length < 2) bosses = dedupe([...bosses, ...[...titles].sort((a, b) => b.length - a.length).slice(0, 3)]);
+  const cats = dedupe(items.map(i => i.category).filter(Boolean));
+  const biomes = (cats.length ? cats : ['other']).map(c => BIOME[c] || BIOME.other);
+  return { source, enemies: titles, bosses, biomes, count: titles.length };
+}
+function setWorld(world) { WORLD = world; world ? KVG.set('world', world) : KVG.del('world'); }
+function themedName(kind) {
+  if (!WORLD) return null;
+  const pool = (kind === 'boss' && WORLD.bosses.length) ? WORLD.bosses : WORLD.enemies;
+  return pool.length ? pick(pool) : null;
 }
 
 /* Choose-your-path events (Capybara Go flavour: good / bad / ugly). */
@@ -218,6 +287,7 @@ const saveMeta = () => KVG.set('meta', meta);
 
 let run = KVG.get('run', null);        // resumable in-progress run
 const saveRun = () => run ? KVG.set('run', run) : KVG.del('run');
+let WORLD = KVG.get('world', null);    // themed content from your tasks (see "YOUR WORLD")
 const tLevel = (id) => meta.talents[id] || 0;
 const tVal = (id) => TALENTS.find(t => t.id === id).val(tLevel(id));
 
@@ -370,8 +440,12 @@ function screenHome() {
         <div class="home-row">
           <button class="btn ghost" id="rosterBtn">🐾 Heroes</button>
           <button class="btn ghost" id="talentsBtn">⭐ Talents</button>
+          <button class="btn ghost" id="worldBtn">🌍 World</button>
         </div>
       </div>
+      <div class="world-line" id="worldLine">${WORLD
+        ? `🌍 Themed by ${WORLD.count} of your tasks · source: ${WORLD.source}`
+        : '🌍 Tap World to theme the adventure from your tasks'}</div>
       <div class="meta-strip">
         <span>🐟 ${meta.fish}</span>
         <span>🏆 best depth ${meta.bestDepth}</span>
@@ -383,6 +457,79 @@ function screenHome() {
   $('#playBtn').onclick = () => { if (resumable && !confirm('Abandon the current run and start fresh?')) return; startRun(); };
   $('#rosterBtn').onclick = () => go(screenRoster);
   $('#talentsBtn').onclick = () => go(screenTalents);
+  $('#worldBtn').onclick = () => go(screenImport);
+}
+
+/* ---------- World / import screen ---------- */
+function screenImport() {
+  render(`
+    <div class="screen">
+      ${topBar('🌍 Your World', '')}
+      <p class="hint">Theme-only: your real tasks just name the monsters and biomes — the dice game underneath is the same. Pick a source.</p>
+      <div class="list">
+        <button class="btn wide primary" id="mockBtn">✨ Use a sample life (mock data)</button>
+        <button class="btn wide" id="trackerBtn">🧠 Use my tracker's own tasks</button>
+        <label class="btn wide file-btn">📂 Choose a file — Structured JSON or .ics
+          <input type="file" id="fileInput" accept=".json,.ics,application/json,text/calendar" hidden /></label>
+        <button class="btn wide ghost" id="pasteBtn">📋 Paste text instead</button>
+      </div>
+      <div id="worldPreview" class="world-preview"></div>
+    </div>`);
+  $('#backBtn').onclick = () => go(screenHome);
+  $('#mockBtn').onclick = () => applyWorld(buildWorld(MOCK_ITEMS, 'mock'), 'Sample life loaded — meet your monsters. ✨');
+  $('#trackerBtn').onclick = () => {
+    const items = readTrackerItems();
+    if (!items.length) return toast('No tasks found in the tracker yet.');
+    applyWorld(buildWorld(items, 'tracker'), `Pulled ${items.length} things from your tracker. 🧠`);
+  };
+  $('#fileInput').onchange = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = String(reader.result);
+        const isICS = /\.ics$/i.test(file.name) || /^BEGIN:VCALENDAR/m.test(text);
+        const titles = isICS ? parseICSTitles(text) : parseJSONTitles(text);
+        const world = buildWorld(titles, isICS ? 'calendar' : 'file');
+        if (!world) return toast("Couldn't find any task/event titles in that file 😕");
+        applyWorld(world, `Imported ${world.count} titles from ${file.name}. 🌍`);
+      } catch { toast("Couldn't read that file — is it a JSON or .ics export?"); }
+    };
+    reader.readAsText(file);
+  };
+  $('#pasteBtn').onclick = () => {
+    const text = prompt('Paste your tasks/events (one per line, or paste a JSON/.ics export):', '');
+    if (!text || !text.trim()) return;
+    let titles;
+    const t = text.trim();
+    if (/^BEGIN:VCALENDAR/m.test(t)) titles = parseICSTitles(t);
+    else if (/^[\[{]/.test(t)) { try { titles = parseJSONTitles(t); } catch { titles = null; } }
+    if (!titles || !titles.length) titles = dedupe(t.split('\n').map(s => s.replace(/^[-*•\d.\s]+/, '').trim()).filter(Boolean));
+    const world = buildWorld(titles, 'pasted');
+    if (!world) return toast('No titles found in that text 😕');
+    applyWorld(world, `Themed from ${world.count} pasted lines. 🌍`);
+  };
+  renderWorldPreview();
+}
+function applyWorld(world, msg) {
+  if (!world) return toast('Nothing to theme from there 😕');
+  setWorld(world); haptic(14); toast(msg); renderWorldPreview();
+}
+function renderWorldPreview() {
+  const el = $('#worldPreview'); if (!el) return;
+  if (!WORLD) { el.innerHTML = '<p class="hint">No world set yet — the game uses default monster names until you pick a source.</p>'; return; }
+  const sample = WORLD.enemies.slice(0, 6), bosses = WORLD.bosses.slice(0, 3);
+  el.innerHTML = `
+    <div class="card-lg world-card">
+      <div class="hero-meta">
+        <div class="hero-name">Current world · ${esc(WORLD.source)} <span class="pill">${WORLD.count} tasks</span></div>
+        <div class="hero-perk"><b>Monsters:</b> ${sample.map(esc).join(' · ')}${WORLD.count > 6 ? ' …' : ''}</div>
+        <div class="hero-perk"><b>Bosses 👑:</b> ${bosses.map(esc).join(' · ')}</div>
+        <div class="hero-perk"><b>Biomes:</b> ${WORLD.biomes.map(b => b.emoji + ' ' + esc(b.name)).join(' · ')}</div>
+      </div>
+    </div>
+    <button class="btn ghost wide" id="clearWorldBtn">Clear world (use default names)</button>`;
+  $('#clearWorldBtn').onclick = () => { setWorld(null); toast('World cleared.'); renderWorldPreview(); };
 }
 
 /* ---------- Roster (unlock heroes) ---------- */
@@ -496,6 +643,7 @@ function startRun() {
     nineLivesUsed: false,
   };
   if (tLevel('prepared')) run.cards.push(randomCards(1)[0]);
+  run.biome = (WORLD && WORLD.biomes.length) ? pick(WORLD.biomes) : null;   // cosmetic flavour
   meta.runsPlayed++; saveMeta();
   go(screenMap);
 }
@@ -535,6 +683,7 @@ function screenMap() {
       <div class="map-head">
         <div class="map-depth">Depth ${run.col} / ${run.map.length - 1}</div>
         <div class="map-prompt">${isBoss ? 'The path ends here.' : 'Choose your path'}</div>
+        ${run.biome ? `<div class="map-biome">${run.biome.emoji} ${esc(run.biome.name)}</div>` : ''}
       </div>
       <div class="path-options">
         ${options.map((o, i) => {
@@ -901,10 +1050,12 @@ if (typeof module !== 'undefined' && module.exports) {
     // test hooks into the live state machine
     _startRun: startRun, _resolveNode: resolveNode, _doAttack: doAttack, _advance: advance,
     _genMap: genMap, _getRun: () => run, _getMeta: () => meta,
+    buildWorld, setWorld, readTrackerItems, parseICSTitles, parseJSONTitles, MOCK_ITEMS,
   };
 } else {
   document.addEventListener('DOMContentLoaded', () => {
     if (run && run.over) { run = null; saveRun(); }
+    if (!WORLD) setWorld(buildWorld(MOCK_ITEMS, 'mock'));   // themed out of the box; swap anytime in World
     go(screenHome);
   });
 }
