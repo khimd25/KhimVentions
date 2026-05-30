@@ -177,6 +177,42 @@ function collectTitles(node, out, depth = 0) {
   }
 }
 function parseJSONTitles(text) { const out = []; collectTitles(JSON.parse(text), out); return dedupe(out); }
+
+/* Guess one of our biome categories from a task's words / SF Symbol. */
+/* Prefix matching (\b at start only) so plurals/gerunds like "Reporting",
+   "appointments", "meetings" still categorize. Theme-only — rough is fine. */
+const CAT_KW = [
+  ['health',     /\b(meds|medic|medication|pill|vitamin|doctor|dentist|therap|appoint|clinic|health|prescription|refill)|pills|cross\.case|heart/i],
+  ['body',       /\b(run|jog|gym|workout|exercise|walk|yoga|stretch|fitness|lift|swim|bike|sport|hike)|figure\.|dumbbell/i],
+  ['home',       /\b(clean|laundr|tidy|dish|trash|garbage|grocer|meal|cook|plant|litter|vacuum|chore|fold|kitchen|dry clean)|fork|house|cart/i],
+  ['connection', /\b(call|text|message|reply|mom|dad|friend|family|partner|birthday|reach|nanny|date|hang)|bubble|phone\.|person/i],
+  ['work',       /\b(work|project|report|deck|slide|deadline|tax|invoice|client|study|exam|passport|review|launch|interview|meet|quarter|present|email|brief|file)/i],
+];
+function guessCategory(title, symbol = '') {
+  const hay = (title + ' ' + symbol).toLowerCase();
+  for (const [cat, re] of CAT_KW) if (re.test(hay)) return cat;
+  return 'other';
+}
+/* Structured export: {content:{tasks:[{title,_deleted,symbol,note,events:[{source}]}]}}. */
+function parseStructuredItems(obj) {
+  const tasks = obj && obj.content && obj.content.tasks;
+  if (!Array.isArray(tasks)) return null;
+  const items = [];
+  for (const t of tasks) {
+    if (!t || t._deleted) continue;                 // skip deleted
+    const title = (t.title || '').trim();
+    if (!title || title.length > 60) continue;
+    items.push({ title, category: guessCategory(title, t.symbol || ''), type: 'task' });
+  }
+  return items;
+}
+/* Best-effort: Structured shape first, else a tolerant walk for any JSON. */
+function parseJSONToItems(text) {
+  const obj = JSON.parse(text);
+  const structured = parseStructuredItems(obj);
+  if (structured && structured.length) return structured;   // [{title,category}]
+  const out = []; collectTitles(obj, out); return dedupe(out); // [string]
+}
 function parseICSTitles(text) {
   const out = [];
   text.split(/\r?\n/).forEach(l => { const m = l.match(/^SUMMARY(?:;[^:]*)?:(.+)$/i); if (m) out.push(m[1].trim().replace(/\\,/g, ',').replace(/\\n/gi, ' ')); });
@@ -489,8 +525,8 @@ function screenImport() {
       try {
         const text = String(reader.result);
         const isICS = /\.ics$/i.test(file.name) || /^BEGIN:VCALENDAR/m.test(text);
-        const titles = isICS ? parseICSTitles(text) : parseJSONTitles(text);
-        const world = buildWorld(titles, isICS ? 'calendar' : 'file');
+        const items = isICS ? parseICSTitles(text) : parseJSONToItems(text);
+        const world = buildWorld(items, isICS ? 'calendar' : 'structured');
         if (!world) return toast("Couldn't find any task/event titles in that file 😕");
         applyWorld(world, `Imported ${world.count} titles from ${file.name}. 🌍`);
       } catch { toast("Couldn't read that file — is it a JSON or .ics export?"); }
@@ -503,7 +539,7 @@ function screenImport() {
     let titles;
     const t = text.trim();
     if (/^BEGIN:VCALENDAR/m.test(t)) titles = parseICSTitles(t);
-    else if (/^[\[{]/.test(t)) { try { titles = parseJSONTitles(t); } catch { titles = null; } }
+    else if (/^[\[{]/.test(t)) { try { titles = parseJSONToItems(t); } catch { titles = null; } }
     if (!titles || !titles.length) titles = dedupe(t.split('\n').map(s => s.replace(/^[-*•\d.\s]+/, '').trim()).filter(Boolean));
     const world = buildWorld(titles, 'pasted');
     if (!world) return toast('No titles found in that text 😕');
@@ -1050,7 +1086,8 @@ if (typeof module !== 'undefined' && module.exports) {
     // test hooks into the live state machine
     _startRun: startRun, _resolveNode: resolveNode, _doAttack: doAttack, _advance: advance,
     _genMap: genMap, _getRun: () => run, _getMeta: () => meta,
-    buildWorld, setWorld, readTrackerItems, parseICSTitles, parseJSONTitles, MOCK_ITEMS,
+    buildWorld, setWorld, readTrackerItems, parseICSTitles, parseJSONTitles,
+    parseStructuredItems, parseJSONToItems, guessCategory, MOCK_ITEMS,
   };
 } else {
   document.addEventListener('DOMContentLoaded', () => {
