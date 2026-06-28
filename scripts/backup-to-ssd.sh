@@ -82,20 +82,20 @@ step1_secrets() {
   log "━━━ STEP 1/5: Secrets Archive (encrypted) ━━━"
 
   SECRETS_STAGE=$(mktemp -d)
-  trap "rm -rf '$SECRETS_STAGE'" RETURN
+  local cleanup_stage="$SECRETS_STAGE"
 
   # Collect .env files
   log "Collecting .env files..."
-  find "$HOME" -maxdepth 8 -name ".env*" \
+  while IFS= read -r f; do
+    dest="$SECRETS_STAGE${f#$HOME}"
+    mkdir -p "$(dirname "$dest")"
+    cp "$f" "$dest" 2>/dev/null || true
+  done < <(find "$HOME" -maxdepth 8 -name ".env*" \
     -not -path "*/node_modules/*" \
     -not -path "*/.venv/*" \
     -not -path "*/build_env/*" \
     -not -path "*/caption_env/*" \
-    2>/dev/null | while read -r f; do
-      dest="$SECRETS_STAGE${f#$HOME}"
-      mkdir -p "$(dirname "$dest")"
-      cp "$f" "$dest"
-  done
+    2>/dev/null || true)
 
   # SSH keys
   if [[ -d "$HOME/.ssh" ]]; then
@@ -137,6 +137,8 @@ step1_secrets() {
 
   ok "Secrets archive created: $archive"
   warn "KEEP THE PASSWORD SAFE — you'll need it to restore."
+
+  rm -rf "$cleanup_stage"
 }
 
 #──────────────────────────────────────────────────────────────────────
@@ -292,8 +294,9 @@ step4_misc() {
   done
 
   # Transcription files
-  find "$HOME" -maxdepth 1 \( -name "*.srt" -o -name "*.vtt" -o -name "*.tsv" \) \
-    -exec cp {} "$BACKUP_ROOT/misc/" \; 2>/dev/null || true
+  while IFS= read -r f; do
+    cp "$f" "$BACKUP_ROOT/misc/" 2>/dev/null || true
+  done < <(find "$HOME" -maxdepth 1 \( -name "*.srt" -o -name "*.vtt" -o -name "*.tsv" \) 2>/dev/null || true)
 
   ok "Misc files done ($copied loose files copied)"
 }
